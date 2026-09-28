@@ -25,8 +25,8 @@ void spawn_child_obj_relative(struct Object *parent, s16 xOffset, s16 yOffset, s
 }
 
 void bhv_intro_scene_loop(void) {
-    UNUSED struct Object *obj;
-    UNUSED struct Object *obj2;
+    UNUSED struct Object *obj = NULL;
+    UNUSED struct Object *obj2 = NULL;
 
     if (gCutsceneObjSpawn != 0) {
         o->oPosX = gCamera->pos[0];
