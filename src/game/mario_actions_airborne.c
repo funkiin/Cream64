@@ -16,6 +16,7 @@
 #ifdef CHEATS_ACTIONS
 #include "extras/cheats.h"
 #endif
+#include <math.h>
 
 void play_flip_sounds(struct MarioState *m, s16 frame1, s16 frame2, s16 frame3) {
     s32 animFrame = m->marioObj->header.gfx.animInfo.animFrame;
@@ -291,7 +292,7 @@ void update_air_hovering(struct MarioState *m)
     }
     else
     {
-    	if(abs(m->forwardVel) > 0.1f)
+    	if (fabsf(m->forwardVel) > 0.1f)
     	{
     		m->forwardVel = (m->forwardVel * 0.75f);
     	}
