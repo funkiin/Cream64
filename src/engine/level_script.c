@@ -65,10 +65,6 @@ static s16 sScriptStatus;
 static s32 sRegister;
 static struct LevelCommand *sCurrentCmd;
 
-#ifdef USE_SYSTEM_MALLOC
-static struct MemoryPool *sMemPoolForGoddard;
-#endif
-
 static s32 eval_script_op(s8 op, s32 arg) {
     s32 result = 0;
 
@@ -294,24 +290,19 @@ static void level_cmd_load_mio0(void) {
     sCurrentCmd = CMD_NEXT;
 }
 
-#if defined(USE_SYSTEM_MALLOC) && defined(GODDARD_MFACE)
-static void *alloc_for_goddard(u32 size) {
-    return mem_pool_alloc(sMemPoolForGoddard, size);
-}
-
-static void free_for_goddard(void *ptr) {
-    mem_pool_free(sMemPoolForGoddard, ptr);
-}
-#endif
-
 static void level_cmd_load_mario_head(void) {
 #ifdef GODDARD_MFACE
 
 #ifdef USE_SYSTEM_MALLOC
-    sMemPoolForGoddard = mem_pool_init(0, 0);
-    gdm_init(alloc_for_goddard, free_for_goddard);
-    gdm_setup();
-    gdm_maketestdl(CMD_GET(s16, 2));
+    const u32 goddardSize = DOUBLE_SIZE_ON_64_BIT(0xE1000);
+    void *addr = main_pool_alloc(goddardSize, NULL);
+    if (addr != NULL) {
+        gdm_init(addr, goddardSize);
+        gdm_setup();
+        gdm_maketestdl(CMD_GET(s16, 2));
+    } else {
+        CN_DEBUG_PRINTF(("face anime memory overflow\n"));
+    }
 #else
     // TODO: Fix these hardcoded sizes
     void *addr = main_pool_alloc(DOUBLE_SIZE_ON_64_BIT(0xE1000), MEMORY_POOL_LEFT);
