@@ -4,7 +4,16 @@
 #include <stdarg.h>
 #include <string.h>
 #include <ctype.h>
+#ifndef TARGET_VITA
 #include <unistd.h>
+#else
+#include <psp2/kernel/threadmgr.h>
+#endif
+
+#ifdef TARGET_VITA
+#include <psp2/kernel/processmgr.h>
+#include <psp2/io/fcntl.h>
+#endif
 
 #ifdef TARGET_WII_U
 #include <whb/sdcard.h>
@@ -22,9 +31,13 @@
 /* NULL terminated list of platform specific read-only data paths */
 /* priority is top first */
 const char *sys_ropaths[] = {
+#ifdef TARGET_VITA
+    "app0:",
+    "ux0:data/cream64",
+#endif
     ".", // working directory
     "!", // executable directory
-#if (defined(__linux__) || defined(__unix__)) && !defined(TARGET_SWITCH)
+#if (defined(__linux__) || defined(__unix__)) && !defined(TARGET_SWITCH) && !defined(TARGET_VITA)
     // some common UNIX directories for read only stuff
     "/usr/local/share/sm64pc",
     "/usr/share/sm64pc",
@@ -77,8 +90,11 @@ const char *sys_file_name(const char *fpath) {
 }
 
 void sys_sleep(const uint64_t us) {
-    // TODO: figure out which of the platforms we want to support DOESN'T have usleep()
+#ifdef TARGET_VITA
+    sceKernelDelayThread((unsigned int)us);
+#else
     usleep(us);
+#endif
 }
 
 /* this calls a platform-specific impl function after forming the error message */
@@ -95,7 +111,27 @@ void sys_fatal(const char *fmt, ...) {
     sys_fatal_impl(msg);
 }
 
-#ifdef TARGET_WII_U
+#ifdef TARGET_VITA
+
+const char *sys_user_path(void) {
+    static const char *path = "ux0:data/cream64";
+    sceIoMkdir("ux0:data/cream64", 0777);
+    return path;
+}
+
+const char *sys_exe_path(void) {
+    return "app0:";
+}
+
+static void sys_fatal_impl(const char *msg) {
+    fprintf(stderr, "FATAL ERROR:\n%s\n", msg);
+    fflush(stderr);
+    sceKernelDelayThread(3000000);
+    sceKernelExitProcess(1);
+    __builtin_unreachable();
+}
+
+#elif defined(TARGET_WII_U)
 
 static bool mounted = false;
 

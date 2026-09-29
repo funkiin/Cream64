@@ -33,6 +33,8 @@ TARGET_WII_U ?= 0
 TARGET_N3DS ?= 0
 # Build for Nintendo Switch
 TARGET_SWITCH ?= 0
+# Build for PlayStation Vita
+TARGET_VITA ?= 0
 
 # Compiler to use for N64 (and other targets if required)
 #   gcc - uses the GNU C Compiler
@@ -73,12 +75,12 @@ USE_GLVND ?= 0
 
 # Renders: GL, GL_LEGACY, D3D11, D3D12, GX2 (forced if the target is Wii U), C3D (forced if the target is 3DS)
 RENDER_API ?= GL
-# Window managers: SDL1, SDL2, DXGI (forced if D3D11 or D3D12 in RENDER_API), GX2 (forced if the target is Wii U), 3DS (forced if the target is 3DS)
+# Window managers: SDL1, SDL2, DXGI (forced if D3D11 or D3D12 in RENDER_API), GX2, 3DS, VITA
 WINDOW_API ?= SDL2
-# Audio backends: SDL1, SDL2 (forced if the target is Wii U), 3DS (forced if the target is 3DS)
+# Audio backends: SDL1, SDL2 (forced if the target is Wii U), 3DS, VITA
 AUDIO_API ?= SDL2
 # Controller backends (can have multiple, space separated): SDL1, SDL2
-# WII_U (forced if the target is Wii U), 3DS (forced if the target is 3DS), SWITCH (forced if the target is SWITCH)
+# WII_U (forced if the target is Wii U), 3DS, SWITCH, VITA
 CONTROLLER_API ?= SDL2
 
 #==============================================================================#
@@ -140,6 +142,20 @@ ifeq ($(TARGET_SWITCH),1)
   CONTROLLER_API := SWITCH
 
   TARGET_PORT_CONSOLE := 1
+endif
+
+ifeq ($(TARGET_VITA),1)
+  RENDER_API := GL
+  WINDOW_API := VITA
+  AUDIO_API := VITA
+  CONTROLLER_API := VITA
+
+  TARGET_PORT_CONSOLE := 1
+  USE_GLES := 1
+  HIGH_FPS_PC ?= 1
+  NODRAWINGDISTANCE ?= 1
+  RUMBLE_FEEDBACK ?= 0
+  VITA_MAX_CLOCKS ?= 1
 endif
 
 TOUCH_CONTROLS ?= 0
@@ -353,6 +369,11 @@ else ifeq ($(TARGET_N3DS),1)
   DEFINES += TARGET_N3DS=1
 else ifeq ($(TARGET_SWITCH),1)
   DEFINES += TARGET_SWITCH=1 USE_GLES=1
+else ifeq ($(TARGET_VITA),1)
+  DEFINES += TARGET_VITA=1 USE_SYSTEM_MALLOC=1 __vita__=1
+  ifeq ($(VITA_MAX_CLOCKS),1)
+    DEFINES += VITA_MAX_CLOCKS=1
+  endif
 endif
 
 # OpenGL defines
@@ -536,6 +557,15 @@ else ifeq ($(TARGET_SWITCH),1)
   BUILD_DIR := $(BUILD_DIR_BASE)/$(VERSION)_nx
   EXE := $(BUILD_DIR)/$(TARGET).nro
   TARGET_NAME := Nintendo Switch
+else ifeq ($(TARGET_VITA),1)
+  BUILD_DIR := $(BUILD_DIR_BASE)/$(VERSION)_vita
+  EXE := $(BUILD_DIR)/cream64_vita
+  VITA_STRIPPED_ELF := $(BUILD_DIR)/cream64_vita.stripped.elf
+  VELF := $(BUILD_DIR)/cream64_vita.velf
+  EBOOT := $(BUILD_DIR)/eboot.bin
+  PARAM_SFO := $(BUILD_DIR)/param.sfo
+  VPK := $(BUILD_DIR)/cream64.vpk
+  TARGET_NAME := PlayStation Vita
 else ifeq ($(TARGET_ANDROID),1)
   BUILD_DIR := $(BUILD_DIR_BASE)/$(VERSION)_android
   EXE := $(BUILD_DIR)/libmain.so
@@ -654,6 +684,10 @@ ifeq ($(WINDOWS_BUILD),1)
 endif
 
 GENERATED_C_FILES := $(BUILD_DIR)/assets/mario_anim_data.c $(BUILD_DIR)/assets/demo_data.c
+
+ifeq ($(TARGET_VITA),1)
+GENERATED_C_FILES += $(VITA_LINK_PAD_C)
+endif
 
 ifneq ($(TARGET_N64),1)
 GENERATED_C_FILES += $(addprefix $(BUILD_DIR)/bin/,$(addsuffix _skybox.c,$(notdir $(basename $(wildcard textures/skyboxes/*.png)))))
@@ -885,6 +919,25 @@ else ifeq ($(TARGET_N3DS),1)
   SMDH_DESCRIPTION ?= Super Mario 64 3DS Port
   SMDH_AUTHOR ?= Nintendo - port by Fnouwt (Gericom) and mkst
   SMDH_ICON := $(PLATFORM_DIR)/icon.smdh
+else ifeq ($(TARGET_VITA),1)
+  CROSS ?= arm-vita-eabi-
+  AS := $(CROSS)as
+  CC := $(CROSS)gcc
+  CXX := $(CROSS)g++
+  CPP := $(CROSS)cpp
+  LD := $(CROSS)g++
+  AR := $(CROSS)ar
+  STRIP := $(CROSS)strip
+  OBJDUMP := $(CROSS)objdump
+  OBJCOPY := $(CROSS)objcopy
+  SDLCONFIG :=
+
+  VITA_APPNAME ?= Super Cream 64
+  VITA_TITLEID ?= CRME64001
+  VITA_VERSION ?= 01.00
+  VITA_MKSFOEX_FLAGS ?= -d PARENTAL_LEVEL=1
+  VITA_LINK_PAD_SIZE ?= 8192
+  VITA_LINK_PAD_C := $(BUILD_DIR)/vita_link_pad.c
 else
 
 # for some reason sdl-config in dka64 is not prefixed, while pkg-config is
@@ -1051,6 +1104,10 @@ else
   endif
 endif
 
+ifeq ($(TARGET_VITA),1)
+  CFLAGS := $(BACKEND_CFLAGS) $(DEF_INC_CFLAGS) -std=gnu11 -g -fno-common -fno-strict-aliasing -fwrapv -fsigned-char -ffast-math -march=armv7-a -mtune=cortex-a9 -mfpu=neon
+endif
+
 ifeq ($(TARGET_WII_U),1)
   CFLAGS += -ffunction-sections $(MACHDEP) -ffast-math -D__WIIU__ -D__WUT__ $(INCLUDE)
 endif
@@ -1102,6 +1159,18 @@ LDFLAGS := -lm $(NO_PIE_DEF) $(BACKEND_LDFLAGS) $(MACHDEP) $(RPXSPECS) $(LIBPATH
 
 else ifeq ($(TARGET_N3DS),1)
 LDFLAGS := $(LIBPATHS) -lcitro3d -lctru -lm -specs=3dsx.specs -g -marm -mthumb-interwork -march=armv6k -mtune=mpcore -mfloat-abi=hard -mtp=soft # -Wl,-Map,$(notdir $*.map)
+
+else ifeq ($(TARGET_VITA),1)
+LDFLAGS := -Wl,-q -Wl,-z,nocopyreloc -Wl,-Map,$(BUILD_DIR)/cream64_vita.map \
+  -Wl,--start-group \
+  -lvitaGL -lvitashark -lmathneon -lSceShaccCgExt -lSceShaccCg_stub -ltaihen_stub \
+  -lSceKernelDmacMgr_stub -lSceCommonDialog_stub -lSceGxm_stub -lSceDisplay_stub \
+  -lSceAppMgr_stub -lSceCtrl_stub -lSceNet_stub -lSceNetCtl_stub \
+  -lSceSysmodule_stub -lScePower_stub -lSceProcessmgr_stub \
+  -lSceAudio_stub -lSceKernelThreadMgr_stub -lSceIofilemgr_stub -lSceAppUtil_stub \
+  -lSceTouch_stub -lSceHid_stub -lSceMotion_stub \
+  -lpthread -lm -lstdc++ \
+  -Wl,--end-group
 
 else ifeq ($(TARGET_SWITCH),1)
   LDFLAGS := -specs=$(LIBNX)/switch.specs $(NXARCH) $(BACKEND_LDFLAGS) -lstdc++ -lm
@@ -1233,6 +1302,14 @@ endif
 
 ifeq ($(TARGET_N3DS),1)
 cia: $(CIA)
+endif
+
+ifeq ($(TARGET_VITA),1)
+vpk: $(VPK)
+else
+vpk:
+	@$(PRINT) "$(RED)The vpk target requires TARGET_VITA=1$(NO_COL)\n"
+	@false
 endif
 
 # thank you apple very cool
@@ -1635,6 +1712,12 @@ $(BUILD_DIR)/include/level_headers.h: levels/level_headers.h.in
 # Compilation Recipes                                                          #
 #==============================================================================#
 
+ifeq ($(TARGET_VITA),1)
+$(VITA_LINK_PAD_C):
+	@mkdir -p $(dir $@)
+	@printf 'const unsigned char cream64_vita_link_pad[%s] __attribute__((used)) = { 1 };\n' "$(VITA_LINK_PAD_SIZE)" > $@
+endif
+
 # Compile C code
 $(BUILD_DIR)/%.o: %.c
 	$(call print,Compiling:,$<,$@)
@@ -1738,6 +1821,18 @@ $(ROM): $(ELF)
 
 $(BUILD_DIR)/$(TARGET).objdump: $(ELF)
 	$(OBJDUMP) -D $< > $@
+
+else ifeq ($(TARGET_VITA),1)
+$(EXE): $(O_FILES) $(MIO0_FILES:.mio0=.o) $(ULTRA_O_FILES) $(GODDARD_O_FILES)
+	@$(PRINT) "$(GREEN)Linking Vita ELF: $(BLUE)$@ $(NO_COL)\n"
+	$(V)$(LD) -L $(BUILD_DIR) -o $@ $(O_FILES) $(ULTRA_O_FILES) $(GODDARD_O_FILES) $(LDFLAGS)
+
+$(VPK): $(EXE)
+	@$(PRINT) "$(GREEN)Packing Vita VPK: $(BLUE)$@ $(NO_COL)\n"
+	$(V)vita-elf-create $(EXE) $(VELF)
+	$(V)vita-make-fself -c $(VELF) $(EBOOT)
+	$(V)vita-mksfoex -s TITLE_ID="$(VITA_TITLEID)" $(VITA_MKSFOEX_FLAGS) "$(VITA_APPNAME)" $(PARAM_SFO)
+	$(V)vita-pack-vpk -s $(PARAM_SFO) -b $(EBOOT) $@
 
 else ifeq ($(TARGET_WII_U),1)
 $(ELF): $(O_FILES) $(MIO0_FILES:.mio0=.o) $(ULTRA_O_FILES) $(GODDARD_O_FILES) $(BUILD_DIR)/$(RPC_LIBS)
@@ -1858,7 +1953,7 @@ MAKEFLAGS += -r
 .SUFFIXES:
 
 # Phony targets
-.PHONY: all clean distclean default diff test load libultra res
+.PHONY: all clean distclean default diff test load libultra res vpk
 
 # General Dependencies
 

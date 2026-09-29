@@ -27,12 +27,14 @@
 #include "gfx/gfx_3ds.h"
 #include "gfx/gfx_citro3d.h"
 #include "gfx/gfx_dummy.h"
+#include "gfx/gfx_vita.h"
 
 #include "audio/audio_api.h"
 #include "audio/audio_sdl.h"
 #include "audio/audio_null.h"
 #include "audio/audio_3ds.h"
 #include "audio/audio_3ds_threading.h"
+#include "audio/audio_vita.h"
 
 #include "pc_main.h"
 
@@ -319,7 +321,9 @@ void main_func(void) {
 
     gEffectsMemoryPool = mem_pool_init(0x4000, MEMORY_POOL_LEFT);
 
-    #if defined(WAPI_SDL1) || defined(WAPI_SDL2)
+    #if defined(WAPI_VITA)
+    wm_api = &gfx_vita;
+    #elif defined(WAPI_SDL1) || defined(WAPI_SDL2)
     wm_api = &gfx_sdl;
     #elif defined(WAPI_DXGI)
     wm_api = &gfx_dxgi;
@@ -371,6 +375,11 @@ void main_func(void) {
     wm_api->set_touchscreen_callbacks((void *)touch_down, (void *)touch_motion, (void *)touch_up);
     #endif
     
+    #if defined(AAPI_VITA)
+    if (audio_api == NULL && audio_vita.init())
+        audio_api = &audio_vita;
+    #endif
+
     #if defined(AAPI_SDL1) || defined(AAPI_SDL2)
     if (audio_api == NULL && audio_sdl.init()) 
         audio_api = &audio_sdl;
@@ -417,6 +426,8 @@ void main_func(void) {
     #if defined(TARGET_SWITCH)
     disableBoostMode();
     while (appletMainLoop())
+    #elif defined(TARGET_VITA)
+    while (true)
     #else
     while (true)
     #endif

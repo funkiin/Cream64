@@ -10,13 +10,16 @@
 #include "controller_wiiu.h"
 #include "controller_3ds.h"
 #include "controller_switch.h"
+#include "controller_vita.h"
 
 // Analog camera movement by Pathétique (github.com/vrmiguel), y0shin and Mors
 // Contribute or communicate bugs at github.com/vrmiguel/sm64-analog-camera
 
 static struct ControllerAPI *controller_implementations[] = {
     &controller_recorded_tas,
-#if defined(CAPI_WII_U)
+#if defined(CAPI_VITA)
+    &controller_vita,
+#elif defined(CAPI_WII_U)
     &controller_wiiu,
 #elif defined(CAPI_3DS)
     &controller_3ds,

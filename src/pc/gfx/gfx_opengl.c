@@ -2,6 +2,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include <stdio.h>
 
 #ifndef _LANGUAGE_C
 # define _LANGUAGE_C
@@ -31,6 +32,8 @@
 # ifndef GLEW_STATIC
 #  include <SDL/SDL_opengl.h>
 # endif
+#elif defined(WAPI_VITA)
+# include <vitaGL.h>
 #endif
 
 #ifdef WAPI_SDL2
@@ -270,8 +273,10 @@ static GLuint compile_shader(const char *vertex_shader, const char *fragment_sha
     glAttachShader(shader_program_id, fs);
     glLinkProgram(shader_program_id);
 
+#ifndef TARGET_VITA
     glDetachShader(shader_program_id, vs);
     glDetachShader(shader_program_id, fs);
+#endif
     glDeleteShader(vs);
     glDeleteShader(fs);
 
