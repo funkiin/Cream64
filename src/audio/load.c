@@ -13,6 +13,10 @@
 #include "pc/fs/fs.h"
 #endif
 
+#ifdef TARGET_VITA
+#include "pc/vita_sound_stream.h"
+#endif
+
 #define ALIGN16(val) (((val) + 0xF) & ~0xF)
 
 struct SharedDma {
@@ -859,7 +863,11 @@ static inline void *load_sound_res(const char *path) {
     return data;
 }
 #else
-# define LOAD_DATA(x) x
+# ifdef TARGET_VITA
+#  define LOAD_DATA(x) vita_sound_stream_resolve((const void *)(x))
+# else
+#  define LOAD_DATA(x) x
+# endif
 #endif
 
 // (void) must be omitted from parameters to fix stack with -framepointer

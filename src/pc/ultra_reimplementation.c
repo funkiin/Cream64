@@ -5,6 +5,10 @@
 #include "platform.h"
 #include "fs/fs.h"
 
+#ifdef TARGET_VITA
+#include "vita_sound_stream.h"
+#endif
+
 #include "game/save_file.h"
 
 #ifdef TARGET_WEB
@@ -17,6 +21,11 @@ u64 osClockRate = 62500000;
 s32 osPiStartDma(UNUSED OSIoMesg *mb, UNUSED s32 priority, UNUSED s32 direction,
                  uintptr_t devAddr, void *vAddr, size_t nbytes,
                  UNUSED OSMesgQueue *mq) {
+#ifdef TARGET_VITA
+    if (vita_sound_stream_is_address(devAddr, nbytes)) {
+        return vita_sound_stream_read(devAddr, vAddr, nbytes);
+    }
+#endif
     memcpy(vAddr, (const void *) devAddr, nbytes);
     return 0;
 }

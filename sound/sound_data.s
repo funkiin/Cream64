@@ -16,8 +16,12 @@ SKIP(4)
 .balign 16
 
 glabel gSoundDataRaw
+#ifdef TARGET_VITA
+.byte 0
+#else
 SOUND_FILE("sound/sound_data.tbl")
 SKIP(4)
+#endif
 .balign 16
 
 glabel gMusicData

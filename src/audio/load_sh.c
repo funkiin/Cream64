@@ -8,6 +8,10 @@
 #include "seqplayer.h"
 #include "segment_symbols.h"
 
+#ifdef TARGET_VITA
+#include "pc/vita_sound_stream.h"
+#endif
+
 #ifdef EXTERNAL_DATA
 #include "pc/platform.h"
 #include "pc/fs/fs.h"
@@ -994,7 +998,11 @@ static inline void *load_sound_res(const char *path) {
     return data;
 }
 #else
-# define LOAD_DATA(x) x
+# ifdef TARGET_VITA
+#  define LOAD_DATA(x) vita_sound_stream_resolve((const void *)(x))
+# else
+#  define LOAD_DATA(x) x
+# endif
 #endif
 
 #ifndef EXTERNAL_DATA

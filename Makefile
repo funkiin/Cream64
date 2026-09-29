@@ -1279,6 +1279,8 @@ ifeq ($(TARGET_N64),1)
 ALL_FILE := $(ROM)
 else ifeq ($(TARGET_ANDROID),1)
 ALL_FILE := $(APK_SIGNED)
+else ifeq ($(TARGET_VITA),1)
+ALL_FILE := $(VPK)
 else
 ALL_FILE := $(EXE)
 endif
@@ -1830,9 +1832,17 @@ $(EXE): $(O_FILES) $(MIO0_FILES:.mio0=.o) $(ULTRA_O_FILES) $(GODDARD_O_FILES)
 $(VPK): $(EXE)
 	@$(PRINT) "$(GREEN)Packing Vita VPK: $(BLUE)$@ $(NO_COL)\n"
 	$(V)vita-elf-create $(EXE) $(VELF)
-	$(V)vita-make-fself -c $(VELF) $(EBOOT)
-	$(V)vita-mksfoex -s TITLE_ID="$(VITA_TITLEID)" $(VITA_MKSFOEX_FLAGS) "$(VITA_APPNAME)" $(PARAM_SFO)
-	$(V)vita-pack-vpk -s $(PARAM_SFO) -b $(EBOOT) $@
+	$(V)vita-make-fself -s $(VELF) $(EBOOT)
+	$(V)vita-mksfoex -s TITLE_ID="$(VITA_TITLEID)" -s APP_VER="$(VITA_VERSION)" $(VITA_MKSFOEX_FLAGS) "$(VITA_APPNAME)" $(PARAM_SFO)
+	$(V)vita-pack-vpk \
+		-s $(PARAM_SFO) \
+		-b $(EBOOT) \
+		-a sce_sys/icon0.png=sce_sys/icon0.png \
+		-a sce_sys/livearea/contents/bg.png=sce_sys/livearea/contents/bg.png \
+		-a sce_sys/livearea/contents/startup.png=sce_sys/livearea/contents/startup.png \
+		-a sce_sys/livearea/contents/template.xml=sce_sys/livearea/contents/template.xml \
+		-a $(SOUND_BIN_DIR)/sound_data.tbl=res/sound/sound_data.tbl \
+		$@
 
 else ifeq ($(TARGET_WII_U),1)
 $(ELF): $(O_FILES) $(MIO0_FILES:.mio0=.o) $(ULTRA_O_FILES) $(GODDARD_O_FILES) $(BUILD_DIR)/$(RPC_LIBS)
