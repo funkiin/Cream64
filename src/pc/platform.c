@@ -8,6 +8,7 @@
 #include <unistd.h>
 #else
 #include <psp2/kernel/threadmgr.h>
+#include <psp2/io/stat.h>
 #endif
 
 #ifdef TARGET_VITA
